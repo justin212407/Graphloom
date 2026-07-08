@@ -1,0 +1,19 @@
+{
+  "name": "@graphloom/adapter-reactflow",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@graphloom/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@xyflow/react": "^12.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}

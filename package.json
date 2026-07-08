@@ -1,0 +1,13 @@
+{
+  "name": "graphloom",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "dev": "pnpm --filter @graphloom/playground dev"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}
