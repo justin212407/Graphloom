@@ -1,11 +1,9 @@
 /**
- * graphToCode — v0: fresh-generation only (no patching yet)
+ * graphToCode — AST patch-or-generate
  *
- * Per IMPLEMENTATION_PLAN.md Day 1:
- * Given a Graph, topologically sort and emit tagged functions per PARSER_RULES.md §1-2.
- *
- * Patch-in-place regeneration (using prevSnapshot) is explicitly a Day 2 step —
- * do not attempt it here.
+ * Per SYNC_ENGINE.md §1:
+ * Naive approach (what to avoid): stringify the graph into a fresh code file every time.
+ * GraphLoom's approach: patch, don't regenerate.
  */
 
 import type {
@@ -13,9 +11,8 @@ import type {
   GraphNode,
   GraphEdge,
   CodeMapping,
-  AstRef,
-  FetchNodeConfig,
-  TransformNodeConfig,
+  SyncSnapshot,
+  Port,
 } from "./types.js";
 import {
   createProject,
@@ -24,18 +21,20 @@ import {
   portTypeToTS,
   topologicalSort,
 } from "./astUtils.js";
+import { Node, SyntaxKind } from "ts-morph";
 
 export interface GraphToCodeResult {
   code: string;
   mapping: CodeMapping;
 }
 
+const CALL_SITE_MARKER = "// --- Pipeline execution ---";
+
 /**
  * Validates a graph before code generation.
  * Checks for: cyclic graphs, multiple output nodes, multiple edges into one input port.
  */
 function validateGraph(graph: Graph): void {
-  // Check for multiple output nodes (EDGE_CASES.md)
   const outputNodes = graph.nodes.filter(n => n.kind === "output");
   if (outputNodes.length > 1) {
     throw new Error(
@@ -44,8 +43,7 @@ function validateGraph(graph: Graph): void {
     );
   }
 
-  // Check for multiple edges into one input port (EDGE_CASES.md)
-  const targetPorts = new Map<string, string>(); // portKey -> edgeId
+  const targetPorts = new Map<string, string>();
   for (const edge of graph.edges) {
     const portKey = `${edge.target.nodeId}:${edge.target.portId}`;
     if (targetPorts.has(portKey)) {
@@ -56,22 +54,76 @@ function validateGraph(graph: Graph): void {
     }
     targetPorts.set(portKey, edge.id);
   }
-
-  // Cycle detection happens inside topologicalSort
 }
 
 /**
- * Builds a lookup: for each node, which other nodes feed into it (and through which ports).
+ * Helper to check if two port lists are identical structurally.
+ */
+function arePortsEqual(a: Port[], b: Port[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].name !== b[i].name || a[i].type !== b[i].type) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Helper to check if node configs are identical.
+ */
+function areConfigsEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/**
+ * Extracts the @graphloom:node kind from a statement's leading comment ranges.
+ */
+function getGraphLoomKind(node: Node): string | null {
+  const ranges = node.getLeadingCommentRanges();
+  for (const range of ranges) {
+    const text = range.getText();
+    const match = text.match(/@graphloom:node\s+(\w+)/);
+    if (match) {
+      return match[1];
+    }
+  }
+  return null;
+}
+
+/**
+ * Gets the actual character span of the block including its leading comments.
+ */
+function getBlockSpan(node: Node): { start: number; end: number } {
+  const ranges = node.getLeadingCommentRanges();
+  const start = ranges.length > 0 ? ranges[0].getPos() : node.getStart();
+  const end = node.getEnd();
+  return { start, end };
+}
+
+/**
+ * Helper to find a declaration by its symbol name in a SourceFile.
+ */
+function getDeclarationBySymbol(sourceFile: any, symbol: string): Node | null {
+  const func = sourceFile.getFunction(symbol);
+  if (func) return func;
+  const varDecl = sourceFile.getVariableDeclaration(symbol);
+  if (varDecl) {
+    return varDecl.getVariableStatement() ?? null;
+  }
+  return null;
+}
+
+/**
+ * Builds a lookup of incoming edges per target node.
  */
 function buildInputMap(
   graph: Graph
 ): Map<string, Array<{ sourceNodeId: string; sourcePortId: string; targetPortId: string }>> {
   const map = new Map<string, Array<{ sourceNodeId: string; sourcePortId: string; targetPortId: string }>>();
-
   for (const node of graph.nodes) {
     map.set(node.id, []);
   }
-
   for (const edge of graph.edges) {
     const inputs = map.get(edge.target.nodeId);
     if (inputs) {
@@ -82,138 +134,79 @@ function buildInputMap(
       });
     }
   }
-
   return map;
 }
 
-/**
- * Gets a safe symbol (variable/function name) for a node.
- * Uses the node label directly (assumed to be a valid identifier from validation).
- */
 function nodeSymbol(node: GraphNode): string {
   return node.label;
 }
 
 /**
- * Generates the code for an InputNode.
- * Code shape per PARSER_RULES.md §2: const x = defineInput<T>("name")
+ * Generates declaration code for each node kind.
  */
-function generateInputNode(node: GraphNode): string {
-  const outputType = node.outputs[0]?.type ?? "any";
-  const tsType = portTypeToTS(outputType);
-  const defaultVal = (node.config as { defaultValue?: unknown }).defaultValue;
-  const defaultArg = defaultVal !== undefined
-    ? `, ${JSON.stringify(defaultVal)}`
-    : "";
-
-  return `// @graphloom:node input\nconst ${nodeSymbol(node)} = defineInput<${tsType}>("${node.label}"${defaultArg});\n`;
-}
-
-/**
- * Generates the code for a FetchNode.
- * Code shape per PARSER_RULES.md §2: async function name(...) { ... }, tagged fetch
- */
-function generateFetchNode(
-  node: GraphNode,
-  incomingEdges: Array<{ sourceNodeId: string; sourcePortId: string; targetPortId: string }>,
-  nodeMap: Map<string, GraphNode>
-): string {
-  const config = node.config as FetchNodeConfig;
-  const params = node.inputs.map(port => {
-    const tsType = portTypeToTS(port.type);
-    return `${port.name}: ${tsType}`;
-  }).join(", ");
-
-  const outputType = node.outputs[0]?.type ?? "any";
-  const returnType = portTypeToTS(outputType);
-
-  // Build the function body
-  const urlExpr = `\`${config.urlTemplate}\``;
-  const methodStr = config.method ?? "GET";
-
-  let bodyLines: string;
-  if (methodStr === "POST") {
-    bodyLines = `  const response = await fetch(${urlExpr}, {\n    method: "${methodStr}",\n    headers: { "Content-Type": "application/json" },\n    body: JSON.stringify({ ${node.inputs.map(p => p.name).join(", ")} }),\n  });\n  return response.json();`;
-  } else {
-    bodyLines = `  const response = await fetch(${urlExpr});\n  return response.json();`;
+function generateNodeDeclaration(node: GraphNode): string {
+  const sym = nodeSymbol(node);
+  switch (node.kind) {
+    case "input": {
+      const outputType = node.outputs[0]?.type ?? "any";
+      const tsType = portTypeToTS(outputType);
+      const defaultVal = (node.config as { defaultValue?: unknown }).defaultValue;
+      const defaultArg = defaultVal !== undefined ? `, ${JSON.stringify(defaultVal)}` : "";
+      return `// @graphloom:node input\nconst ${sym} = defineInput<${tsType}>("${node.label}"${defaultArg});`;
+    }
+    case "fetch": {
+      const config = node.config as { urlTemplate: string; method?: string };
+      const params = node.inputs.map(p => `${p.name}: ${portTypeToTS(p.type)}`).join(", ");
+      const returnType = portTypeToTS(node.outputs[0]?.type ?? "any");
+      const urlExpr = `\`${config.urlTemplate}\``;
+      const methodStr = config.method ?? "GET";
+      
+      let bodyLines: string;
+      if (methodStr === "POST") {
+        bodyLines = `  const response = await fetch(${urlExpr}, {\n    method: "${methodStr}",\n    headers: { "Content-Type": "application/json" },\n    body: JSON.stringify({ ${node.inputs.map(p => p.name).join(", ")} }),\n  });\n  return response.json();`;
+      } else {
+        bodyLines = `  const response = await fetch(${urlExpr});\n  return response.json();`;
+      }
+      return `// @graphloom:node fetch\nasync function ${sym}(${params}): Promise<${returnType}> {\n${bodyLines}\n}`;
+    }
+    case "transform": {
+      const config = node.config as { body: string };
+      const params = node.inputs.map(p => `${p.name}: ${portTypeToTS(p.type)}`).join(", ");
+      const returnType = portTypeToTS(node.outputs[0]?.type ?? "any");
+      const body = config.body || "return undefined;";
+      return `// @graphloom:node transform\nfunction ${sym}(${params}): ${returnType} {\n  ${body}\n}`;
+    }
+    case "output": {
+      const inputType = portTypeToTS(node.inputs[0]?.type ?? "any");
+      const paramName = node.inputs[0]?.name ?? "value";
+      return `// @graphloom:node output\nfunction ${sym}(${paramName}: ${inputType}) {\n  return ${paramName};\n}`;
+    }
   }
-
-  return `// @graphloom:node fetch\nasync function ${nodeSymbol(node)}(${params}): Promise<${returnType}> {\n${bodyLines}\n}\n`;
 }
 
 /**
- * Generates the code for a TransformNode.
- * Code shape per PARSER_RULES.md §2: plain function, tagged transform
+ * Generates the call site block.
  */
-function generateTransformNode(
-  node: GraphNode,
-  incomingEdges: Array<{ sourceNodeId: string; sourcePortId: string; targetPortId: string }>,
-  nodeMap: Map<string, GraphNode>
-): string {
-  const config = node.config as TransformNodeConfig;
-  const params = node.inputs.map(port => {
-    const tsType = portTypeToTS(port.type);
-    return `${port.name}: ${tsType}`;
-  }).join(", ");
-
-  const outputType = node.outputs[0]?.type ?? "any";
-  const returnType = portTypeToTS(outputType);
-
-  // Use the config.body verbatim — per NODE_TYPES.md §3, body is captured/replayed as-is
-  const body = config.body || "return undefined;";
-
-  return `// @graphloom:node transform\nfunction ${nodeSymbol(node)}(${params}): ${returnType} {\n  ${body}\n}\n`;
-}
-
-/**
- * Generates the code for an OutputNode.
- * Code shape per PARSER_RULES.md §2: function tagged output
- */
-function generateOutputNode(
-  node: GraphNode,
-  incomingEdges: Array<{ sourceNodeId: string; sourcePortId: string; targetPortId: string }>,
-  nodeMap: Map<string, GraphNode>
-): string {
-  const inputType = node.inputs[0]?.type ?? "any";
-  const tsType = portTypeToTS(inputType);
-  const paramName = node.inputs[0]?.name ?? "value";
-
-  return `// @graphloom:node output\nfunction ${nodeSymbol(node)}(${paramName}: ${tsType}) {\n  return ${paramName};\n}\n`;
-}
-
-/**
- * Generates the pipeline call site — the wiring that connects nodes via function calls.
- * Per PARSER_RULES.md §3: edges are reconstructed from call sites, not declarations.
- */
-function generateCallSite(
+function generateCallSiteBlock(
   sortedNodes: GraphNode[],
   inputMap: Map<string, Array<{ sourceNodeId: string; sourcePortId: string; targetPortId: string }>>,
   nodeMap: Map<string, GraphNode>
 ): string {
-  const lines: string[] = [];
-  lines.push("// --- Pipeline execution ---");
-
+  const lines: string[] = [CALL_SITE_MARKER];
   for (const node of sortedNodes) {
-    if (node.kind === "input") {
-      // Input nodes are already declared as const
-      continue;
-    }
+    if (node.kind === "input") continue;
 
     const incomingEdges = inputMap.get(node.id) ?? [];
-
-    // Build the argument list from incoming edges
-    // For each input port on this node, find which source node feeds it
     const args: string[] = [];
+
     for (const port of node.inputs) {
       const edge = incomingEdges.find(e => e.targetPortId === port.id);
       if (edge) {
         const sourceNode = nodeMap.get(edge.sourceNodeId);
         if (sourceNode) {
           if (sourceNode.kind === "input") {
-            // Input nodes are referenced directly by their variable name
             args.push(nodeSymbol(sourceNode));
           } else {
-            // Other nodes are referenced by their result variable
             args.push(`${nodeSymbol(sourceNode)}Result`);
           }
         }
@@ -222,103 +215,156 @@ function generateCallSite(
 
     const sym = nodeSymbol(node);
     const callExpr = `${sym}(${args.join(", ")})`;
-
     if (node.kind === "output") {
-      // Output is the terminal call
       lines.push(`const ${sym}Result = ${callExpr};`);
     } else if (node.kind === "fetch") {
-      // Fetch nodes are async
       lines.push(`const ${sym}Result = await ${callExpr};`);
     } else {
       lines.push(`const ${sym}Result = ${callExpr};`);
     }
   }
-
   return lines.join("\n");
 }
 
 /**
- * graphToCode — v0: fresh-generation only
+ * graphToCode
  *
- * Generates valid, tagged TypeScript source from a Graph.
- * The generated code follows PARSER_RULES.md §1 tagging conventions exactly.
+ * Generates or patches TypeScript source representing the Graph.
  *
- * @param graph - The graph to generate code from
- * @returns { code, mapping } — the generated source code and a mapping from node IDs to AST locations
+ * @param graph - Current Graph state
+ * @param prevSnapshot - Optional previous sync snapshot to enable patch-in-place
+ * @returns { code, mapping }
  */
-export function graphToCode(graph: Graph): GraphToCodeResult {
-  // Validate the graph first
+export function graphToCode(graph: Graph, prevSnapshot?: SyncSnapshot): GraphToCodeResult {
   validateGraph(graph);
 
-  // Build lookup structures
-  const nodeMap = new Map<string, GraphNode>();
-  for (const node of graph.nodes) {
-    nodeMap.set(node.id, node);
-  }
-
-  const inputMap = buildInputMap(graph);
-
-  // Topological sort (throws on cycles — per EDGE_CASES.md)
+  // Topological sort of current graph
   const sortedIds = topologicalSort(
     graph.nodes.map(n => n.id),
     graph.edges
   );
-  const sortedNodes = sortedIds.map(id => nodeMap.get(id)!);
-
-  // Generate each node's declaration
-  const declarations: string[] = [];
-  const mapping: CodeMapping = { nodeToAst: {}, astToNode: {} };
-
-  // Track running offset for mapping
-  let currentOffset = 0;
-
-  // Add a defineInput helper declaration at the top if we have input nodes
-  const hasInputNodes = sortedNodes.some(n => n.kind === "input");
-  if (hasInputNodes) {
-    const helperCode = `/** GraphLoom runtime helper */\nfunction defineInput<T>(name: string, defaultValue?: T): T {\n  return defaultValue as T;\n}\n\n`;
-    declarations.push(helperCode);
-    currentOffset += helperCode.length;
+  const nodeMap = new Map<string, GraphNode>();
+  for (const node of graph.nodes) {
+    nodeMap.set(node.id, node);
   }
+  const sortedNodes = sortedIds.map(id => nodeMap.get(id)!);
+  const inputMap = buildInputMap(graph);
 
-  // Generate declarations in topological order
-  for (const node of sortedNodes) {
-    const incomingEdges = inputMap.get(node.id) ?? [];
-    let nodeCode: string;
+  // Fresh Generation Path
+  if (!prevSnapshot || !prevSnapshot.code) {
+    const declarations: string[] = [];
+    const mapping: CodeMapping = { nodeToAst: {}, astToNode: {} };
+    let currentOffset = 0;
 
-    switch (node.kind) {
-      case "input":
-        nodeCode = generateInputNode(node);
-        break;
-      case "fetch":
-        nodeCode = generateFetchNode(node, incomingEdges, nodeMap);
-        break;
-      case "transform":
-        nodeCode = generateTransformNode(node, incomingEdges, nodeMap);
-        break;
-      case "output":
-        nodeCode = generateOutputNode(node, incomingEdges, nodeMap);
-        break;
-      default:
-        throw new Error(`Unknown node kind: ${(node as GraphNode).kind}`);
+    const hasInputNodes = sortedNodes.some(n => n.kind === "input");
+    if (hasInputNodes) {
+      const helper = `/** GraphLoom runtime helper */\nfunction defineInput<T>(name: string, defaultValue?: T): T {\n  return defaultValue as T;\n}\n\n`;
+      declarations.push(helper);
+      currentOffset += helper.length;
     }
 
-    // Record mapping
-    const sym = nodeSymbol(node);
-    const start = currentOffset;
-    const end = currentOffset + nodeCode.length;
+    for (const node of sortedNodes) {
+      const nodeDecl = generateNodeDeclaration(node) + "\n";
+      const sym = nodeSymbol(node);
+      const start = currentOffset;
+      const end = currentOffset + nodeDecl.length;
 
-    mapping.nodeToAst[node.id] = { symbol: sym, start, end };
-    mapping.astToNode[sym] = node.id;
+      mapping.nodeToAst[node.id] = { symbol: sym, start, end };
+      mapping.astToNode[sym] = node.id;
 
-    declarations.push(nodeCode);
-    currentOffset = end + 1; // +1 for the newline between declarations
+      declarations.push(nodeDecl);
+      currentOffset = end + 1; // account for extra newline
+    }
+
+    const callSite = generateCallSiteBlock(sortedNodes, inputMap, nodeMap);
+    const code = declarations.join("\n") + "\n" + callSite + "\n";
+
+    return { code, mapping };
   }
 
-  // Generate the pipeline call site
-  const callSite = generateCallSite(sortedNodes, inputMap, nodeMap);
+  // Patch-In-Place Path (Day 2 upgrade)
+  const markerIndex = prevSnapshot.code.indexOf(CALL_SITE_MARKER);
+  const declarationsCode = markerIndex !== -1
+    ? prevSnapshot.code.substring(0, markerIndex).trim()
+    : prevSnapshot.code;
 
-  // Assemble the full source
-  const code = declarations.join("\n") + "\n" + callSite + "\n";
+  const project = createProject();
+  const sourceFile = createSourceFile(project, declarationsCode);
 
-  return { code, mapping };
+  // 1. Delete nodes that are no longer in the graph
+  const currentIds = new Set(graph.nodes.map(n => n.id));
+  for (const prevNode of prevSnapshot.graph.nodes) {
+    if (!currentIds.has(prevNode.id)) {
+      const prevSymbol = prevSnapshot.mapping.nodeToAst[prevNode.id]?.symbol;
+      if (prevSymbol) {
+        const declNode = getDeclarationBySymbol(sourceFile, prevSymbol);
+        if (declNode) {
+          declNode.remove();
+        }
+      }
+    }
+  }
+
+  // 2. Add or update node declarations
+  for (const node of sortedNodes) {
+    const prevNode = prevSnapshot.graph.nodes.find(n => n.id === node.id);
+    const newDeclText = generateNodeDeclaration(node);
+
+    if (prevNode) {
+      const prevSymbol = prevSnapshot.mapping.nodeToAst[node.id]?.symbol;
+      const portsChanged = !arePortsEqual(prevNode.inputs, node.inputs) || !arePortsEqual(prevNode.outputs, node.outputs);
+      const configChanged = !areConfigsEqual(prevNode.config, node.config) || prevNode.label !== node.label;
+
+      if (portsChanged || configChanged) {
+        if (prevSymbol) {
+          const declNode = getDeclarationBySymbol(sourceFile, prevSymbol);
+          if (declNode) {
+            // Replace the subtree verbatim, preserving spacing/comments around it
+            declNode.replaceWithText(newDeclText);
+          } else {
+            sourceFile.addStatements("\n" + newDeclText);
+          }
+        } else {
+          sourceFile.addStatements("\n" + newDeclText);
+        }
+      }
+    } else {
+      // New node, append to the declaration list
+      sourceFile.addStatements("\n" + newDeclText);
+    }
+  }
+
+  // 3. Assemble and print final code
+  const callSiteBlock = generateCallSiteBlock(sortedNodes, inputMap, nodeMap);
+  const finalCode = sourceFile.getFullText().trim() + "\n\n" + callSiteBlock + "\n";
+
+  // Reconstruct mapping
+  const finalProject = createProject();
+  const finalSourceFile = createSourceFile(finalProject, finalCode);
+  const mapping: CodeMapping = { nodeToAst: {}, astToNode: {} };
+
+  const finalStatements = finalSourceFile.getStatements();
+  for (const stmt of finalStatements) {
+    const kindTag = getGraphLoomKind(stmt);
+    if (!kindTag) continue;
+
+    let symbol = "";
+    if (Node.isVariableStatement(stmt)) {
+      symbol = stmt.getDeclarations()[0]?.getName() ?? "";
+    } else if (Node.isFunctionDeclaration(stmt)) {
+      symbol = stmt.getName() ?? "";
+    }
+
+    if (symbol) {
+      // Find matching nodeId
+      const matchingNode = graph.nodes.find(n => nodeSymbol(n) === symbol);
+      if (matchingNode) {
+        const span = getBlockSpan(stmt);
+        mapping.nodeToAst[matchingNode.id] = { symbol, start: span.start, end: span.end };
+        mapping.astToNode[symbol] = matchingNode.id;
+      }
+    }
+  }
+
+  return { code: finalCode, mapping };
 }

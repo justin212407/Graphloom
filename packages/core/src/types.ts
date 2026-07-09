@@ -76,7 +76,34 @@ export type DriftResult =
   | { status: "clean" }
   | { status: "graph-ahead"; changedNodeIds: string[] }
   | { status: "code-ahead"; changedSymbols: string[] }
-  | { status: "conflict"; graphChangedNodeIds: string[]; codeChangedSymbols: string[] };
+  | {
+      /**
+       * Both sides changed on completely disjoint nodes — each side's changes
+       * are independently safe to apply. Not a conflict per CONFLICT_DETECTION.md §2:
+       * "A node id in only one set is a clean, safe, one-directional update."
+       *
+       * NOTE: This status is an extension beyond the original four-state union in
+       * data_model.md §3, which had no representation for this case. Added to avoid
+       * falsely treating disjoint edits as conflicts.
+       */
+      status: "both-ahead";
+      graphChangedNodeIds: string[];
+      codeChangedSymbols: string[];
+    }
+  | {
+      /**
+       * True conflict: at least one node id appears in BOTH the graph-changed set
+       * and the code-changed set. Only the intersecting node ids are genuine conflicts;
+       * non-overlapping changes from either side are safe.
+       *
+       * graphChangedNodeIds / codeChangedSymbols carry the FULL changed sets (not just
+       * the intersection), so the caller can see everything that moved, with the overlap
+       * derivable via intersection.
+       */
+      status: "conflict";
+      graphChangedNodeIds: string[];
+      codeChangedSymbols: string[];
+    };
 
 // === §4. Node vocabulary config shapes (v1) ===
 
