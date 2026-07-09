@@ -80,10 +80,13 @@ type DriftResult =
   | { status: "clean" }
   | { status: "graph-ahead"; changedNodeIds: string[] }
   | { status: "code-ahead"; changedSymbols: string[] }
+  | { status: "both-ahead"; graphChangedNodeIds: string[]; codeChangedSymbols: string[] }
   | { status: "conflict"; graphChangedNodeIds: string[]; codeChangedSymbols: string[] };
 ```
 
-`status: "conflict"` is the case the whole product is built around: both sides changed since the last snapshot. GraphLoom's contract is to surface this to the caller rather than pick a winner — see `sync_engine.md` §3.
+`status: "both-ahead"` means both sides changed since the last snapshot, but on completely disjoint nodes — each side's change is independently safe to apply (see `CONFLICT_DETECTION.md` §2: "A node id in only one set is a clean, safe, one-directional update").
+
+`status: "conflict"` means at least one node id is present in **both** the graph-changed and code-changed sets. GraphLoom's contract is to surface the conflicting set to the caller rather than pick a winner — see `sync_engine.md` §3.
 
 ## 4. Node vocabulary config shapes (v1)
 

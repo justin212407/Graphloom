@@ -26,14 +26,14 @@ export type {
 export { graphToCode } from "./graphToCode.js";
 export type { GraphToCodeResult } from "./graphToCode.js";
 
-// Code → Graph (Day 2 stub)
-// export { codeToGraph } from "./codeToGraph.js";
+// Code → Graph
+export { codeToGraph } from "./codeToGraph.js";
 
-// Drift detection (Day 2 stub)
-// export { detectDrift } from "./detectDrift.js";
+// Drift detection
+export { detectDrift } from "./detectDrift.js";
 
-// Conflict resolution (Day 2 stub)
-// export { resolveConflict } from "./resolveConflict.js";
+// Conflict resolution
+export { resolveConflict } from "./resolveConflict.js";
 
 // Node kind utilities
 export {
