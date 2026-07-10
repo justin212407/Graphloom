@@ -20,7 +20,7 @@ import { hashCode } from "../src/astUtils.js";
 import { createInputNode } from "../src/nodeKinds/input.js";
 import { createTransformNode } from "../src/nodeKinds/transform.js";
 import { createOutputNode } from "../src/nodeKinds/output.js";
-import type { Graph, SyncSnapshot, DriftResult, GraphEdge } from "../src/types.js";
+import type { Graph, SyncSnapshot, DriftResult, GraphEdge } from "../src/types.js";import { mergeDisjointEdits } from "../../../apps/playground/src/mergeEngine.js";
 import { mergeDisjointEdits } from "../../../apps/playground/src/mergeEngine.js";
 
 // ─── ANSI colours ──────────────────────────────────────────────────────────
