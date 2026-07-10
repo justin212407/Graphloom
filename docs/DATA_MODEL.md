@@ -94,16 +94,16 @@ Kept intentionally minimal — enough to express a believable pipeline, not a ge
 
 ```ts
 // InputNode.config
-{ defaultValue?: unknown }
+{ defaultValue?: unknown; [key: string]: unknown }
 
 // FetchNode.config
-{ urlTemplate: string; method: "GET" | "POST" }
+{ urlTemplate: string; method: "GET" | "POST"; [key: string]: unknown }
 
 // TransformNode.config
-{ body: string } // a pure JS expression/function body, patched in place on edit
+{ body: string; [key: string]: unknown } // a pure JS expression/function body, patched in place on edit
 
 // OutputNode.config
-{} // terminal, no config
+{ [key: string]: unknown } // terminal, no config
 ```
 
 ## 5. Why position lives on the node
