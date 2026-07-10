@@ -1,4 +1,4 @@
 // @graphloom/adapter-reactflow public API
-// Implementation: Day 3 per IMPLEMENTATION_PLAN.md
 
-export {};
+export { toGraphLoomGraph, fromGraphLoomGraph } from './ReactFlowAdapter.js';
+export type { ReactFlowState } from './ReactFlowAdapter.js';

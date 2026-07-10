@@ -21,6 +21,7 @@ import { createInputNode } from "../src/nodeKinds/input.js";
 import { createTransformNode } from "../src/nodeKinds/transform.js";
 import { createOutputNode } from "../src/nodeKinds/output.js";
 import type { Graph, SyncSnapshot, DriftResult, GraphEdge } from "../src/types.js";
+import { mergeDisjointEdits } from "../../../apps/playground/src/mergeEngine.js";
 
 // ─── ANSI colours ──────────────────────────────────────────────────────────
 const C = {
@@ -341,40 +342,10 @@ if (drift5.status !== "both-ahead") {
   console.log(`${C.red}  Skipped: step 5 did not return both-ahead (got "${drift5.status}"), cannot test apply cycle.${C.reset}`);
   suspiciousVerdict("Step 5 prerequisite failed — step 6 is blocked.");
 } else {
-  // The both-ahead consumer contract:
-  // 1. Apply graph side → run graphToCode to regenerate code from the updated graph
-  //    (this patches only the changed node-4 subtree)
-  const step6GraphResult = graphToCode(graph5, currentSnapshot);
-  console.log(`  [graph side] graphToCode output length: ${step6GraphResult.code.length} chars`);
-
-  // 2. Apply code side → run codeToGraph to reconstruct the graph from the hand-edited code
-  //    (this captures the lowerCase comment the developer added)
-  const step6CodeResult = codeToGraph(code5, currentSnapshot);
-  console.log(`  [code side] codeToGraph warnings: ${step6CodeResult.warnings.length}`);
-
-  // 3. Merge the two results into a single authoritative snapshot:
-  //    - The code comes from graphToCode (graph drove it), but we need to also fold in
-  //      the code-side hand edit. In a "both-ahead" scenario the contract is to apply
-  //      graph changes to the code first (graphToCode patch), then run codeToGraph
-  //      to capture the code-side changes — or equivalently, start from the code-side
-  //      version and feed the graph-changed nodes through graphToCode.
-  //
-  //    Here we simulate the simplest correct strategy:
-  //    a. Start from code5 (already contains the code-side edit on lowerCase)
-  //    b. Patch ONLY node-4's subtree using graphToCode against a snapshot whose code is code5
-
-  const intermediateSnap: SyncSnapshot = {
-    graphVersion: graph5.version - 1,
-    codeHash: hashCode(code5),
-    code: code5,
-    graph: { ...graph5, nodes: currentSnapshot.graph.nodes, version: graph5.version - 1 },
-    mapping: step6CodeResult.mapping,  // mapping derived from code5
-    timestamp: Date.now(),
-  };
-
-  const step6FinalCodeResult = graphToCode(graph5, intermediateSnap);
-  const finalCode6 = step6FinalCodeResult.code;
-  const finalGraph6 = graph5;
+  // Call the shared mergeDisjointEdits function to unify merge behavior
+  const mergeRes = mergeDisjointEdits(graph5, code5, currentSnapshot, drift5);
+  const finalCode6 = mergeRes.code;
+  const finalGraph6 = mergeRes.graph;
 
   section("Final merged code (node-4 patched, lowerCase comment preserved)");
   const lowerStart = finalCode6.indexOf("// @graphloom:node transform\nfunction lowerCase");
@@ -386,7 +357,7 @@ if (drift5.status !== "both-ahead") {
 
   // Capture the authoritative snapshot
   currentGraph = finalGraph6;
-  currentSnapshot = snap(finalGraph6, finalCode6, step6FinalCodeResult.mapping);
+  currentSnapshot = mergeRes.snapshot;
 
   const drift6 = detectDrift(currentSnapshot.graph, currentSnapshot.code, currentSnapshot);
 
