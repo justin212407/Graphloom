@@ -110,21 +110,24 @@ export type DriftResult =
 /** InputNode.config */
 export interface InputNodeConfig {
   defaultValue?: unknown;
+  [key: string]: unknown;
 }
 
 /** FetchNode.config */
 export interface FetchNodeConfig {
   urlTemplate: string;
   method: "GET" | "POST";
+  [key: string]: unknown;
 }
 
 /** TransformNode.config */
 export interface TransformNodeConfig {
   /** a pure JS expression/function body, patched in place on edit */
   body: string;
+  [key: string]: unknown;
 }
 
 /** OutputNode.config — terminal, no config */
 export interface OutputNodeConfig {
-  // intentionally empty
+  [key: string]: unknown;
 }

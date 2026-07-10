@@ -291,6 +291,8 @@ export function graphToCode(graph: Graph, prevSnapshot?: SyncSnapshot): GraphToC
   const project = createProject();
   const sourceFile = createSourceFile(project, declarationsCode);
 
+  const replacements: Array<{ start: number; end: number; text: string }> = [];
+
   // 1. Delete nodes that are no longer in the graph
   const currentIds = new Set(graph.nodes.map(n => n.id));
   for (const prevNode of prevSnapshot.graph.nodes) {
@@ -298,8 +300,9 @@ export function graphToCode(graph: Graph, prevSnapshot?: SyncSnapshot): GraphToC
       const prevSymbol = prevSnapshot.mapping.nodeToAst[prevNode.id]?.symbol;
       if (prevSymbol) {
         const declNode = getDeclarationBySymbol(sourceFile, prevSymbol);
-        if (declNode) {
-          declNode.remove();
+        if (declNode && Node.isStatement(declNode)) {
+          const span = getBlockSpan(declNode);
+          replacements.push({ start: span.start, end: span.end, text: "" });
         }
       }
     }
@@ -318,20 +321,28 @@ export function graphToCode(graph: Graph, prevSnapshot?: SyncSnapshot): GraphToC
       if (portsChanged || configChanged) {
         if (prevSymbol) {
           const declNode = getDeclarationBySymbol(sourceFile, prevSymbol);
-          if (declNode) {
-            // Replace the subtree verbatim, preserving spacing/comments around it
-            declNode.replaceWithText(newDeclText);
+          if (declNode && Node.isStatement(declNode)) {
+            const span = getBlockSpan(declNode);
+            replacements.push({ start: span.start, end: span.end, text: newDeclText });
           } else {
-            sourceFile.addStatements("\n" + newDeclText);
+            replacements.push({ start: sourceFile.getEnd(), end: sourceFile.getEnd(), text: "\n\n" + newDeclText });
           }
         } else {
-          sourceFile.addStatements("\n" + newDeclText);
+          replacements.push({ start: sourceFile.getEnd(), end: sourceFile.getEnd(), text: "\n\n" + newDeclText });
         }
       }
     } else {
       // New node, append to the declaration list
-      sourceFile.addStatements("\n" + newDeclText);
+      replacements.push({ start: sourceFile.getEnd(), end: sourceFile.getEnd(), text: "\n\n" + newDeclText });
     }
+  }
+
+  // Sort replacements by start index descending to prevent offset shifting
+  replacements.sort((a, b) => b.start - a.start);
+
+  // Apply all replacements
+  for (const r of replacements) {
+    sourceFile.replaceText([r.start, r.end], r.text);
   }
 
   // 3. Assemble and print final code
