@@ -339,4 +339,117 @@ describe("round-trip fidelity", () => {
     // Assert that the hand-added comment survived!
     expect(regeneratedCode).toContain("// HAND-ADDED COMMENT");
   });
+
+  it("regression: ensures no duplicate @graphloom:node tags are generated after patching", () => {
+    const original = createLinearGraph();
+    const { code: originalCode, mapping: originalMapping } = graphToCode(original);
+
+    // Snapshot of the initial state
+    const snapshot = {
+      graphVersion: 1,
+      codeHash: "hash-initial",
+      code: originalCode,
+      graph: original,
+      mapping: originalMapping,
+      timestamp: Date.now(),
+    };
+
+    // Modify rankResults transform body on graph side
+    const modifiedGraph = JSON.parse(JSON.stringify(original)) as Graph;
+    const transformNode = modifiedGraph.nodes.find(n => n.id === "node-3")!;
+    (transformNode.config as any).body = "return results.slice(0, 8);";
+
+    // Regenerate code
+    const { code: regeneratedCode } = graphToCode(modifiedGraph, snapshot);
+
+    // Verify tag count for transformNode (should be exactly 1)
+    const matches = regeneratedCode.match(/\/\/ @graphloom:node transform/g);
+    expect(matches).not.toBeNull();
+    expect(matches!.length).toBe(1); // exactly 1 transform node in this linear graph
+  });
+
+  it("regression: updates @graphloom:node tag correctly when node kind changes (no leftovers)", () => {
+    const original = createLinearGraph();
+    const { code: originalCode, mapping: originalMapping } = graphToCode(original);
+
+    const snapshot = {
+      graphVersion: 1,
+      codeHash: "hash-initial",
+      code: originalCode,
+      graph: original,
+      mapping: originalMapping,
+      timestamp: Date.now(),
+    };
+
+    // Change rankResults node (node-3) from transform to fetch
+    const modifiedGraph = JSON.parse(JSON.stringify(original)) as Graph;
+    const transformNode = modifiedGraph.nodes.find(n => n.id === "node-3")!;
+    transformNode.kind = "fetch";
+    transformNode.config = {
+      urlTemplate: "/api/rank",
+      method: "POST",
+    };
+
+    // Regenerate code
+    const { code: regeneratedCode } = graphToCode(modifiedGraph, snapshot);
+
+    // Check tags:
+    // Should have 1 input, 2 fetch (fetchResults + rankResults), 0 transform (rankResults is no longer transform), 1 output
+    const inputMatches = regeneratedCode.match(/\/\/ @graphloom:node input/g);
+    const fetchMatches = regeneratedCode.match(/\/\/ @graphloom:node fetch/g);
+    const transformMatches = regeneratedCode.match(/\/\/ @graphloom:node transform/g);
+    const outputMatches = regeneratedCode.match(/\/\/ @graphloom:node output/g);
+
+    expect(inputMatches?.length).toBe(1);
+    expect(fetchMatches?.length).toBe(2); // node-2 + node-3
+    expect(transformMatches).toBeNull(); // 0 transform nodes left
+    expect(outputMatches?.length).toBe(1);
+  });
+
+  it("regression: handles consecutive patching of the same node without duplication (double-patch check)", () => {
+    const original = createLinearGraph();
+    const { code: code0, mapping: mapping0 } = graphToCode(original);
+
+    // First patch
+    const snap0 = {
+      graphVersion: 1,
+      codeHash: "h0",
+      code: code0,
+      graph: original,
+      mapping: mapping0,
+      timestamp: Date.now(),
+    };
+
+    const graph1 = JSON.parse(JSON.stringify(original)) as Graph;
+    const node3_g1 = graph1.nodes.find(n => n.id === "node-3")!;
+    (node3_g1.config as any).body = "return results.slice(0, 5);";
+
+    const { code: code1, mapping: mapping1 } = graphToCode(graph1, snap0);
+
+    // Check tag count on first patch
+    const transformMatches1 = code1.match(/\/\/ @graphloom:node transform/g);
+    expect(transformMatches1?.length).toBe(1);
+
+    // Second patch (consecutive)
+    const snap1 = {
+      graphVersion: 2,
+      codeHash: "h1",
+      code: code1,
+      graph: graph1,
+      mapping: mapping1,
+      timestamp: Date.now(),
+    };
+
+    const graph2 = JSON.parse(JSON.stringify(graph1)) as Graph;
+    const node3_g2 = graph2.nodes.find(n => n.id === "node-3")!;
+    (node3_g2.config as any).body = "return results.slice(0, 3);";
+
+    const { code: code2 } = graphToCode(graph2, snap1);
+
+    // Check tag count on second patch
+    const transformMatches2 = code2.match(/\/\/ @graphloom:node transform/g);
+    expect(transformMatches2?.length).toBe(1); // STILL exactly 1
+    expect(code2).toContain("return results.slice(0, 3);");
+    expect(code2).not.toContain("return results.slice(0, 5);");
+  });
 });
