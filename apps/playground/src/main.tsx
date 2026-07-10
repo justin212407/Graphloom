@@ -1,4 +1,14 @@
-// main.tsx — app entry point
-// Implementation: Day 3 per IMPLEMENTATION_PLAN.md
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { ReactFlowProvider } from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+import './index.css';
+import App from './App';
 
-export {};
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <ReactFlowProvider>
+      <App />
+    </ReactFlowProvider>
+  </React.StrictMode>
+);
