@@ -109,3 +109,11 @@ Kept intentionally minimal — enough to express a believable pipeline, not a ge
 ## 5. Why position lives on the node
 
 Round-tripping layout (x/y) alongside logic is a deliberate choice: if code edits caused nodes to jump around on every regen, the demo would look broken even if the logic sync were perfect. Position is preserved unless a node is structurally added/removed.
+
+## Addendum — Codegen target type
+
+```ts
+export type CodegenTarget = "ts" | "python";
+```
+
+`graphToCode(graph, prevSnapshot?, target: CodegenTarget = "ts")`. When `target` is `"python"`, the returned `CodeMapping`/`AstRef` are unused — Python generation does not participate in patch-in-place regeneration or drift detection (see `PYTHON_CODEGEN.md`). `SyncSnapshot` is unaffected; Python output is never snapshotted.

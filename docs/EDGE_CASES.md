@@ -40,3 +40,15 @@ Scenarios the implementation needs an explicit answer for, so they get decided h
 - True rename tracking across the code→graph direction
 - Automatic conflict resolution / three-way merge (see `CONFLICT_DETECTION.md` §6)
 - Any node kind introducing control flow (branches, loops as graph structure — see `NODE_TYPES.md` §5)
+
+## Addendum — Extended-scope edge cases 
+
+**Second adapter**
+- `JSONAdapter` receiving a shape missing fields GraphLoom's `Graph` requires (e.g. no position data) — must not crash; supply sensible defaults and cover this explicitly in the adapter's own tests, not silently.
+
+**Diff view**
+- A node in `graphChangedNodeIds`/`codeChangedSymbols` whose graph-side and code-side text are actually identical (e.g. a whitespace difference already normalized elsewhere) — render as "no visible difference," not an empty or confusing diff.
+- Very large hand-edited bodies — truncate with a "view full" affordance rather than breaking the banner's non-blocking layout constraint from `CONFLICT_DETECTION.md` §5.
+
+**Python codegen (if attempted)**
+- `config.body` containing JS-specific syntax has no valid Python translation — `pythonBackend.ts` must not attempt to transpile it. Emit the §3 placeholder pattern from `PYTHON_CODEGEN.md` instead. Decide and document this before writing code, not after hitting the problem mid-implementation.

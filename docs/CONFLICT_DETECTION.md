@@ -62,3 +62,7 @@ The playground surfaces conflicts as a non-blocking banner listing affected node
 - No automatic three-way merge (e.g. line-level merge of a transform body edited on both sides)
 - No conflict history/audit log — only the current snapshot vs. current state is compared
 - No collaborative/multi-user conflict scenarios — this is single-editor, single-timeline drift detection only
+
+## Addendum — Diff view 
+
+Extends §5's UI contract. Each conflicting node's entry in the `DriftBanner` gains an inline diff between the graph-generated fragment and the code-hand-edited fragment for that node, in addition to the existing "keep graph"/"keep code" buttons. The diff is informational — it does not replace the two-button resolution mechanism, and does not introduce partial or line-level merge, which stays explicitly deferred per §6.
