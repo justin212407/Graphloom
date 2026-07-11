@@ -5,7 +5,7 @@ import { useGraphLoom } from './useGraphLoom';
 
 export default function App() {
   const {
-    rfNodes, rfEdges, code, drift,
+    rfNodes, rfEdges, code, drift, conflictDiffs,
     onNodesChange, onEdgesChange, onConnect,
     onCodeChange, onNodeDragStop,
     onResolveConflict, onSimulateConflict,
@@ -40,6 +40,7 @@ export default function App() {
       </div>
       <DriftBanner
         drift={drift}
+        diffs={conflictDiffs}
         onResolve={onResolveConflict}
         onSimulateConflict={onSimulateConflict}
       />
