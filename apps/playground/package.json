@@ -16,11 +16,13 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@xyflow/react": "^12.11.2",
+    "diff": "^9.0.0",
     "monaco-editor": "^0.55.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
+    "@types/diff": "^8.0.0",
     "@vitejs/plugin-react": "^6.0.3",
     "typescript": "^5.5.0",
     "vite": "^8.1.4",

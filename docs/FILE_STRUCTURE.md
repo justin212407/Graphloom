@@ -67,3 +67,23 @@ graphloom/
 - **One file per node kind** in `nodeKinds/`, not a single switch statement — matches the extensibility note in `NODE_TYPES.md` §5, keeps a future fifth node kind a two-file addition.
 - **`roundtrip.test.ts` is the most important test file in the repo.** It should contain the actual fixtures that prove graph→code→graph and code→graph→code preserve comments, variable names, and formatting. If this suite is thin, the core pitch is unverified.
 - **`playground` is intentionally unpublished** — it's a demo/proof surface, not a product. Keeping it out of the publishable package list avoids accidentally shipping Monaco/React Flow as dependents of `@graphloom/core`.
+
+## Addendum — New files 
+
+packages/
+├── adapter-json/                # @graphloom/adapter-json — second adapter stub
+│   ├── package.json
+│   └── src/
+│       ├── JSONAdapter.ts
+│       └── index.ts
+│
+└── core/src/
+└── codegen/                 # stretch: pluggable codegen backends
+├── tsBackend.ts             # existing graphToCode logic, moved here unchanged
+└── pythonBackend.ts          # stretch: one-directional Python generation only
+
+apps/playground/src/
+└── DiffView.tsx                 # inline diff rendering inside DriftBanner's conflict panel
+
+
+`packages/core/src/graphToCode.ts` becomes a thin dispatcher over `codegen/tsBackend.ts` (default) and, if attempted, `codegen/pythonBackend.ts`. Existing behavior for `target: "ts"` must be byte-for-byte unchanged — this is a refactor, not a rewrite. The full Day 1-3 test suite must pass unmodified against it before any Python-specific code is added.

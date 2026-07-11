@@ -76,3 +76,17 @@ Each has typed input/output ports so codeToGraph can validate that hand-written 
 5. Reverse direction is symmetric: code edit → `codeToGraph()` parses the AST back into a `Graph`, diffed against `lastSyncedGraph` before applying to the canvas.
 
 See `sync_engine.md` for the actual algorithm and drift detection logic, and `data_model.md` for the exact shapes being passed around.
+
+## Addendum A — Second adapter 
+
+To prove the adapter interface genuinely decouples `core` from any specific editor (per §2.2's `GraphAdapter<T>` interface), ship one additional, minimal adapter alongside `ReactFlowAdapter`:
+
+**`JSONAdapter`** (`@graphloom/adapter-json`) — the cheapest adapter that still proves the claim: no visual editor UI at all, `T` is a plain serialized JSON shape *deliberately different* from GraphLoom's internal `Graph` type (e.g. flat `x`/`y` fields instead of `position: {x,y}`, edge tuples instead of `{nodeId, portId}` objects) — different enough that `toGraphLoomGraph`/`fromGraphLoomGraph` do real translation work, not a passthrough that would fake the architecture claim rather than prove it. This avoids committing to integrating a second real node-editor library under time pressure.
+
+## Addendum B — Diff view 
+
+Extends §2.4's playground design. The `DriftBanner`'s conflict panel (per `CONFLICT_DETECTION.md` §5) gains a diff view per conflicting node: the graph-side generated fragment vs. the code-side hand-edited fragment for that node's declaration, using the span boundaries `graphToCode`/`codeToGraph` already track via `AstRef`. No new diffing engine needed at the data layer — this is a rendering concern in `apps/playground` only, using a lightweight line-diff library purely for display.
+
+## Addendum C — Pluggable codegen targets 
+
+`graphToCode` gains an optional `target: "ts" | "python"` parameter, default `"ts"`, preserving existing behavior and existing call sites unchanged. Python support is generation-only — see `PYTHON_CODEGEN.md`. This does not change `codeToGraph`, `detectDrift`, or `SyncSnapshot` in any way; Python is an alternate output format, not part of the sync/drift system.

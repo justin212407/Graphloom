@@ -22,16 +22,26 @@ export interface ReactFlowState {
  *   { kind, label, inputs, outputs, config }
  * RF edges use sourceHandle/targetHandle for port IDs.
  */
+const VALID_KINDS = new Set<string>(['input', 'fetch', 'transform', 'output']);
+const DEFAULT_KIND: NodeKind = 'transform';
+
 export function toGraphLoomGraph(state: ReactFlowState, graphId: string, version: number): Graph {
-  const nodes: GraphNode[] = state.nodes.map(rfNode => ({
-    id: rfNode.id,
-    kind: rfNode.data.kind as NodeKind,
-    label: rfNode.data.label as string,
-    inputs: (rfNode.data.inputs as GraphNode['inputs']) ?? [],
-    outputs: (rfNode.data.outputs as GraphNode['outputs']) ?? [],
-    config: (rfNode.data.config as Record<string, unknown>) ?? {},
-    position: rfNode.position,
-  }));
+  const nodes: GraphNode[] = state.nodes.map(rfNode => {
+    const data = rfNode.data ?? {};
+    const kind = String(data.kind);
+    return {
+      id: rfNode.id,
+      kind: VALID_KINDS.has(kind) ? (kind as NodeKind) : DEFAULT_KIND,
+      label: (data.label as string) ?? rfNode.id,
+      inputs: (data.inputs as GraphNode['inputs']) ?? [],
+      outputs: (data.outputs as GraphNode['outputs']) ?? [],
+      config: (data.config as Record<string, unknown>) ?? {},
+      position: {
+        x: rfNode.position?.x ?? 0,
+        y: rfNode.position?.y ?? 0,
+      },
+    };
+  });
 
   const edges: GraphEdge[] = state.edges.map(rfEdge => ({
     id: rfEdge.id,

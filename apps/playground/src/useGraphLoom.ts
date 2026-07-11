@@ -354,11 +354,65 @@ export function useGraphLoom() {
     }
   }, []);
 
+  const conflictDiffs = useMemo<Record<string, { graphText: string; codeText: string }>>(() => {
+    if (drift.status !== 'conflict') return {};
+
+    const diffs: Record<string, { graphText: string; codeText: string }> = {};
+
+    try {
+      const currentGraph = toGraphLoomGraph(
+        { nodes: rfNodes, edges: rfEdges },
+        graphIdRef.current,
+        graphVersionRef.current
+      );
+      const graphResult = graphToCode(currentGraph, snapshotRef.current);
+      
+      const currentCode = code;
+      const codeResult = codeToGraph(currentCode, snapshotRef.current);
+
+      for (const nodeId of drift.graphChangedNodeIds) {
+        // Map code-side changed symbols back to node IDs
+        const codeNodeIds = drift.codeChangedSymbols.map(sym => {
+          for (const [id, ast] of Object.entries(snapshotRef.current.mapping.nodeToAst)) {
+            if (ast.symbol === sym) return id;
+          }
+          return null;
+        }).filter(Boolean) as string[];
+
+        if (codeNodeIds.includes(nodeId)) {
+          let graphText = '';
+          const graphAst = graphResult.mapping.nodeToAst[nodeId];
+          if (graphAst && typeof graphAst.start === 'number') {
+            graphText = graphResult.code.substring(graphAst.start, graphAst.end);
+          }
+
+          let codeText = '';
+          const codeAst = codeResult.mapping.nodeToAst[nodeId];
+          if (codeAst && typeof codeAst.start === 'number') {
+            codeText = currentCode.substring(codeAst.start, codeAst.end);
+          } else {
+            const snapAst = snapshotRef.current.mapping.nodeToAst[nodeId];
+            if (snapAst && typeof snapAst.start === 'number') {
+              codeText = snapshotRef.current.code.substring(snapAst.start, snapAst.end);
+            }
+          }
+
+          diffs[nodeId] = { graphText, codeText };
+        }
+      }
+    } catch (e) {
+      console.warn('[GraphLoom] Failed to compute conflict diffs:', e);
+    }
+
+    return diffs;
+  }, [drift, code, rfNodes, rfEdges]);
+
   return {
     rfNodes,
     rfEdges,
     code,
     drift,
+    conflictDiffs,
     onNodesChange,
     onEdgesChange,
     onConnect,
