@@ -29,10 +29,38 @@ export function toGraphLoomGraph(state: ReactFlowState, graphId: string, version
   const nodes: GraphNode[] = state.nodes.map(rfNode => {
     const data = rfNode.data ?? {};
     const kind = String(data.kind);
+    let finalKind = kind as NodeKind;
+    if (!VALID_KINDS.has(kind)) {
+      console.warn(`[ReactFlowAdapter] Node ${rfNode.id} missing or invalid kind "${kind}", falling back to "${DEFAULT_KIND}"`);
+      finalKind = DEFAULT_KIND;
+    }
+
+    let finalLabel = data.label as string;
+    if (finalLabel === undefined) {
+      console.warn(`[ReactFlowAdapter] Node ${rfNode.id} missing label, falling back to id`);
+      finalLabel = rfNode.id;
+    }
+
+    if (data.inputs === undefined) {
+      console.warn(`[ReactFlowAdapter] Node ${rfNode.id} missing inputs, falling back to []`);
+    }
+
+    if (data.outputs === undefined) {
+      console.warn(`[ReactFlowAdapter] Node ${rfNode.id} missing outputs, falling back to []`);
+    }
+
+    if (data.config === undefined) {
+      console.warn(`[ReactFlowAdapter] Node ${rfNode.id} missing config, falling back to {}`);
+    }
+
+    if (rfNode.position?.x === undefined || rfNode.position?.y === undefined) {
+      console.warn(`[ReactFlowAdapter] Node ${rfNode.id} missing position, falling back to {x: 0, y: 0}`);
+    }
+
     return {
       id: rfNode.id,
-      kind: VALID_KINDS.has(kind) ? (kind as NodeKind) : DEFAULT_KIND,
-      label: (data.label as string) ?? rfNode.id,
+      kind: finalKind,
+      label: finalLabel,
       inputs: (data.inputs as GraphNode['inputs']) ?? [],
       outputs: (data.outputs as GraphNode['outputs']) ?? [],
       config: (data.config as Record<string, unknown>) ?? {},
