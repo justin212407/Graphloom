@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import type { Graph } from '@graphloom/core';
 import {
   toGraphLoomGraph,
@@ -173,36 +173,45 @@ describe('ReactFlowAdapter', () => {
   });
 
   describe('missing fields fallback handling', () => {
-    it('provides defaults for missing position', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('provides defaults for missing position and warns', () => {
+      const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const state: ReactFlowState = {
         nodes: [
           {
             id: 'n1',
-            data: { kind: 'input', label: 'userQuery' },
+            data: { kind: 'input', label: 'userQuery', inputs: [], outputs: [], config: {} },
           } as any,
         ],
         edges: [],
       };
       const graph = toGraphLoomGraph(state, 'test', 1);
       expect(graph.nodes[0].position).toEqual({ x: 0, y: 0 });
+      expect(spy).toHaveBeenCalledWith('[ReactFlowAdapter] Node n1 missing position, falling back to {x: 0, y: 0}');
     });
 
-    it('provides defaults for invalid or missing node kind', () => {
+    it('provides defaults for invalid or missing node kind and warns', () => {
+      const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const state: ReactFlowState = {
         nodes: [
           {
             id: 'n1',
             position: { x: 50, y: 50 },
-            data: { kind: 'bad_kind', label: 'userQuery' },
+            data: { kind: 'bad_kind', label: 'userQuery', inputs: [], outputs: [], config: {} },
           } as any,
         ],
         edges: [],
       };
       const graph = toGraphLoomGraph(state, 'test', 1);
       expect(graph.nodes[0].kind).toBe('transform');
+      expect(spy).toHaveBeenCalledWith('[ReactFlowAdapter] Node n1 missing or invalid kind "bad_kind", falling back to "transform"');
     });
 
-    it('provides empty lists/objects for missing configs and ports', () => {
+    it('provides empty lists/objects for missing configs and ports and warns', () => {
+      const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const state: ReactFlowState = {
         nodes: [
           {
@@ -218,6 +227,11 @@ describe('ReactFlowAdapter', () => {
       expect(graph.nodes[0].outputs).toEqual([]);
       expect(graph.nodes[0].config).toEqual({});
       expect(graph.nodes[0].label).toBe('n1'); // label falls back to id
+      
+      expect(spy).toHaveBeenCalledWith('[ReactFlowAdapter] Node n1 missing label, falling back to id');
+      expect(spy).toHaveBeenCalledWith('[ReactFlowAdapter] Node n1 missing inputs, falling back to []');
+      expect(spy).toHaveBeenCalledWith('[ReactFlowAdapter] Node n1 missing outputs, falling back to []');
+      expect(spy).toHaveBeenCalledWith('[ReactFlowAdapter] Node n1 missing config, falling back to {}');
     });
   });
 });
