@@ -1,31 +1,66 @@
-/* Import Inter + JetBrains Mono fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+/* ── GraphLoom Design System ──
+   Authoritative source: DESIGN.MD
+   Fonts: Space Grotesk (structural), JetBrains Mono (data/code)
+*/
 
 :root {
-  --bg-primary: #0d0d14;
-  --bg-secondary: #13131d;
-  --bg-surface: #1a1a28;
-  --bg-elevated: #222236;
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-medium: rgba(255, 255, 255, 0.1);
-  --text-primary: #e8e8f0;
-  --text-secondary: #8888a0;
-  --text-muted: #555570;
-  --accent-indigo: #6366f1;
-  --accent-green: #22c55e;
-  --accent-blue: #3b82f6;
-  --accent-amber: #f59e0b;
-  --accent-rose: #f43f5e;
-  --accent-violet: #8b5cf6;
-  --accent-cyan: #06b6d4;
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  /* ── Surface tokens ── */
+  --surface: #131313;
+  --surface-dim: #131313;
+  --surface-bright: #393939;
+  --surface-container-lowest: #0e0e0e;
+  --surface-container-low: #1c1b1b;
+  --surface-container: #201f1f;
+  --surface-container-high: #2a2a2a;
+  --surface-container-highest: #353534;
+
+  /* ── Text tokens ── */
+  --on-surface: #e5e2e1;
+  --on-surface-variant: #c4c7c8;
+  --outline: #8e9192;
+  --outline-variant: #444748;
+  --primary: #fdfdfc;
+  --on-primary: #2f3131;
+  --primary-container: #e0e0e0;
+  --secondary: #c8c6c5;
+  --on-secondary: #313030;
+  --error: #ffb4ab;
+  --on-error: #690005;
+  --background: #131313;
+  --on-background: #e5e2e1;
+  --surface-variant: #353534;
+
+  /* ── Semantic accent colors (node kinds) ── */
+  --accent-input: #5C7C99;
+  --accent-fetch: #7D6B91;
+  --accent-transform: #B58B5C;
+  --accent-output: #6B8E6D;
+
+  /* ── Port data-type colors ── */
+  --port-string: #5C7C99;
+  --port-number: #B58B5C;
+  --port-object: #7D6B91;
+  --port-boolean: #A86565;
+  --port-array: #5C8C85;
+
+  /* ── Typography ── */
+  --font-structural: 'Space Grotesk', sans-serif;
+  --font-data: 'JetBrains Mono', monospace;
+
+  /* ── Border radii (DESIGN.MD rounded tokens) ── */
+  --radius-sm: 0.25rem;    /* 4px — chips, port markers, toggle buttons */
+  --radius-default: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 10px;       /* Tested both 16px and 10px — 10px reads better against the sharp 1px borders */
+  --radius-xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* ── Spacing (4px base grid) ── */
+  --spacing-unit: 4px;
+  --spacing-node-padding: 12px;
+  --spacing-gutter: 16px;
+  --spacing-panel-margin: 24px;
+  --spacing-container-gap: 8px;
 }
 
 * {
@@ -38,12 +73,15 @@ html, body, #root {
   height: 100%;
   width: 100%;
   overflow: hidden;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  font-family: var(--font-sans);
+  background: var(--background);
+  color: var(--on-surface);
+  font-family: var(--font-data);
 }
 
-/* ── App Layout ── */
+/* ══════════════════════════════════════════════════
+   TOP BAR (Step 1 — preserved)
+   ══════════════════════════════════════════════════ */
+
 .app-container {
   display: flex;
   flex-direction: column;
@@ -55,28 +93,22 @@ html, body, #root {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  padding: 0 var(--spacing-gutter);
   height: 48px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-container-low);
+  border-bottom: 1px solid var(--outline-variant);
   flex-shrink: 0;
+  font-family: var(--font-structural);
 }
 
 .app-logo {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-weight: 700;
-  font-size: 16px;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 18px;
   letter-spacing: -0.02em;
-  color: var(--text-primary);
-}
-
-.app-subtitle {
-  font-size: 12px;
-  color: var(--text-muted);
-  font-weight: 500;
-  letter-spacing: 0.02em;
+  color: var(--on-surface);
 }
 
 .app-main {
@@ -85,122 +117,104 @@ html, body, #root {
   overflow: hidden;
 }
 
-/* ── Canvas ── */
+/* ══════════════════════════════════════════════════
+   CANVAS (Surface A)
+   Level 0 — surface-container-lowest
+   ══════════════════════════════════════════════════ */
+
 .canvas-container {
   flex: 1;
   position: relative;
-  background: var(--bg-primary);
+  background: var(--surface-container-lowest);
 }
 
-/* React Flow dark theme overrides */
 .react-flow__background {
-  background: var(--bg-primary) !important;
+  background: var(--surface-container-lowest) !important;
 }
 
+/* Strip React Flow's default styles for input/output nodes (prevents double-framing) */
+.react-flow__node-input,
+.react-flow__node-output {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+/* Ghost-style controls per DESIGN.MD: "no fill or border, text/icon color only" */
 .react-flow__controls {
-  background: var(--bg-surface) !important;
-  border: 1px solid var(--border-subtle) !important;
-  border-radius: var(--radius-md) !important;
-  box-shadow: var(--shadow-md) !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
 }
 
 .react-flow__controls-button {
-  background: var(--bg-surface) !important;
-  border-color: var(--border-subtle) !important;
-  color: var(--text-secondary) !important;
-  fill: var(--text-secondary) !important;
+  background: transparent !important;
+  border: none !important;
+  color: var(--outline) !important;
+  fill: var(--outline) !important;
 }
 
 .react-flow__controls-button:hover {
-  background: var(--bg-elevated) !important;
-  color: var(--text-primary) !important;
-  fill: var(--text-primary) !important;
+  background: transparent !important;
+  color: var(--on-surface) !important;
+  fill: var(--on-surface) !important;
 }
 
 .react-flow__minimap {
-  border: 1px solid var(--border-subtle) !important;
-  border-radius: var(--radius-md) !important;
+  border: 1px solid var(--outline-variant) !important;
+  border-radius: var(--radius-sm) !important;
   overflow: hidden;
 }
 
-/* ── Divider ── */
+/* ── Pane divider ── */
 .pane-divider {
   width: 1px;
-  background: var(--border-medium);
+  background: var(--outline-variant);
   flex-shrink: 0;
 }
 
-/* ── Code Pane ── */
-.code-pane-container {
-  width: 480px;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-secondary);
-  flex-shrink: 0;
-}
+/* ══════════════════════════════════════════════════
+   NODE CARDS (Surface A)
+   Level 2 — 1px outline-variant border
+   ══════════════════════════════════════════════════ */
 
-.code-pane-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 16px;
-  height: 36px;
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.code-pane-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.code-pane-badge {
-  font-size: 10px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 100px;
-  background: rgba(99, 102, 241, 0.15);
-  color: var(--accent-indigo);
-  letter-spacing: 0.02em;
-}
-
-/* ── Custom Node Styles ── */
 .graphloom-node {
   min-width: 180px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  font-family: var(--font-sans);
-  transition: box-shadow 0.2s, border-color 0.2s;
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  font-family: var(--font-data);
+  transition: border-color 0.15s ease;
   overflow: hidden;
+  /* No shadows per DESIGN.MD — depth via tonal layering + borders */
 }
 
 .graphloom-node:hover {
-  border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: var(--shadow-lg);
+  border-color: var(--outline);
 }
 
+/* Selected state: 1px solid on-surface (primary text color) — "lifting" without a drop shadow */
 .graphloom-node.selected {
-  border-color: var(--accent-indigo) !important;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3), var(--shadow-lg);
+  border-color: var(--on-surface) !important;
+}
+
+/* ── Node header ── */
+
+/* 2px top border in the node's semantic accent color */
+.node-header-bar {
+  height: 2px;
+  width: 100%;
 }
 
 .node-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.node-header-bar {
-  height: 3px;
-  width: 100%;
-  border-radius: 3px 3px 0 0;
+  padding: 8px var(--spacing-node-padding);
+  border-bottom: 1px solid var(--outline-variant);
 }
 
 .node-icon {
@@ -213,31 +227,33 @@ html, body, #root {
   flex-shrink: 0;
 }
 
+/* Chip / badge: rounded.sm, low-opacity accent fill, 11px monospaced uppercase */
 .node-kind-badge {
-  font-size: 9px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-data);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding: 1px 6px;
-  border-radius: 3px;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
   margin-left: auto;
 }
 
 .node-label {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-primary);
-  font-family: var(--font-mono);
+  color: var(--on-surface);
+  font-family: var(--font-data);
 }
 
 .node-body {
-  padding: 8px 12px;
+  padding: 8px var(--spacing-node-padding);
 }
 
 .node-body-preview {
   font-size: 11px;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
+  color: var(--on-surface-variant);
+  font-family: var(--font-data);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -246,38 +262,43 @@ html, body, #root {
 
 .node-config-value {
   font-size: 11px;
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-  background: rgba(0, 0, 0, 0.2);
+  color: var(--on-surface-variant);
+  font-family: var(--font-data);
+  background: rgba(0, 0, 0, 0.3);
   padding: 2px 6px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
-/* ── Node kind-specific colors ── */
-.node-kind-input .node-header-bar { background: linear-gradient(135deg, #22c55e, #16a34a); }
-.node-kind-input .node-icon { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
-.node-kind-input .node-kind-badge { background: rgba(34, 197, 94, 0.12); color: #22c55e; }
+/* ── Node kind-specific accent colors ──
+   Per DESIGN.MD:
+   INPUT     → Muted Blue   #5C7C99
+   FETCH     → Muted Purple  #7D6B91
+   TRANSFORM → Muted Amber   #B58B5C
+   OUTPUT    → Muted Green   #6B8E6D
+*/
+.node-kind-input .node-header-bar { background: var(--accent-input); }
+.node-kind-input .node-icon { background: rgba(92, 124, 153, 0.15); color: var(--accent-input); }
+.node-kind-input .node-kind-badge { background: rgba(92, 124, 153, 0.12); color: var(--accent-input); }
 
-.node-kind-fetch .node-header-bar { background: linear-gradient(135deg, #06b6d4, #0891b2); }
-.node-kind-fetch .node-icon { background: rgba(6, 182, 212, 0.15); color: #06b6d4; }
-.node-kind-fetch .node-kind-badge { background: rgba(6, 182, 212, 0.12); color: #06b6d4; }
-.node-kind-fetch { border-style: dashed; }
+.node-kind-fetch .node-header-bar { background: var(--accent-fetch); }
+.node-kind-fetch .node-icon { background: rgba(125, 107, 145, 0.15); color: var(--accent-fetch); }
+.node-kind-fetch .node-kind-badge { background: rgba(125, 107, 145, 0.12); color: var(--accent-fetch); }
 
-.node-kind-transform .node-header-bar { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
-.node-kind-transform .node-icon { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; }
-.node-kind-transform .node-kind-badge { background: rgba(139, 92, 246, 0.12); color: #8b5cf6; }
+.node-kind-transform .node-header-bar { background: var(--accent-transform); }
+.node-kind-transform .node-icon { background: rgba(181, 139, 92, 0.15); color: var(--accent-transform); }
+.node-kind-transform .node-kind-badge { background: rgba(181, 139, 92, 0.12); color: var(--accent-transform); }
 
-.node-kind-output .node-header-bar { background: linear-gradient(135deg, #f43f5e, #e11d48); }
-.node-kind-output .node-icon { background: rgba(244, 63, 94, 0.15); color: #f43f5e; }
-.node-kind-output .node-kind-badge { background: rgba(244, 63, 94, 0.12); color: #f43f5e; }
+.node-kind-output .node-header-bar { background: var(--accent-output); }
+.node-kind-output .node-icon { background: rgba(107, 142, 109, 0.15); color: var(--accent-output); }
+.node-kind-output .node-kind-badge { background: rgba(107, 142, 109, 0.12); color: var(--accent-output); }
 
-/* ── Handles (ports) ── */
+/* ── Handles (port dots) ── */
 .react-flow__handle {
   width: 10px !important;
   height: 10px !important;
   border-radius: 50% !important;
-  border: 2px solid var(--bg-surface) !important;
-  transition: transform 0.15s, box-shadow 0.15s;
+  border: 2px solid var(--surface-container-low) !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .react-flow__handle:hover {
@@ -285,19 +306,87 @@ html, body, #root {
   box-shadow: 0 0 6px currentColor;
 }
 
-/* ── Drift Banner ── */
-.drift-banner-container {
-  flex-shrink: 0;
-  border-top: 1px solid var(--border-subtle);
-  background: var(--bg-secondary);
+/* ── Edges ──
+   1px dashed lines. During active sync the dashes animate in a slow continuous crawl. */
+.react-flow__edge-path {
+  stroke: var(--outline) !important;
+  stroke-width: 1px !important;
+  stroke-dasharray: 6 4 !important;
 }
 
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--on-surface-variant) !important;
+  stroke-width: 1.5px !important;
+}
+
+/* Animated edge crawl keyframe (React Flow uses CSS animation for animated edges) */
+@keyframes edgeCrawl {
+  to { stroke-dashoffset: -20; }
+}
+.react-flow__edge--animated .react-flow__edge-path {
+  animation: edgeCrawl 1.5s linear infinite !important;
+}
+
+/* ══════════════════════════════════════════════════
+   CODE PANE (Surface B)
+   Level 1 — surface-container-low fill, 1px outline-variant border
+   ══════════════════════════════════════════════════ */
+
+.code-pane-container {
+  width: 480px;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-container-lowest);
+  border-left: 1px solid var(--outline-variant);
+  flex-shrink: 0;
+}
+
+.code-pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px var(--spacing-gutter);
+  height: 36px;
+  background: var(--surface-container-low);
+  border-bottom: 1px solid var(--outline-variant);
+  font-family: var(--font-structural);
+}
+
+.code-pane-title {
+  /* label-caps typography */
+  font-family: var(--font-structural);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--on-surface-variant);
+}
+
+.code-pane-badge {
+  font-family: var(--font-data);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(107, 142, 109, 0.12);
+  color: var(--accent-output);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* ══════════════════════════════════════════════════
+   DRIFT BANNER + DIFF VIEW (Surface C)
+   ══════════════════════════════════════════════════ */
+
+/* ── Status indicator (in top bar) ── */
 .drift-status {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 20px;
+  padding: 6px var(--spacing-gutter);
   height: 32px;
+  font-family: var(--font-structural);
 }
 
 .drift-status-dot {
@@ -307,11 +396,11 @@ html, body, #root {
   flex-shrink: 0;
 }
 
-.drift-status-clean .drift-status-dot { background: var(--accent-green); box-shadow: 0 0 6px rgba(34, 197, 94, 0.4); }
-.drift-status-graph-ahead .drift-status-dot { background: var(--accent-blue); box-shadow: 0 0 6px rgba(59, 130, 246, 0.4); }
-.drift-status-code-ahead .drift-status-dot { background: var(--accent-amber); box-shadow: 0 0 6px rgba(245, 158, 11, 0.4); }
-.drift-status-both-ahead .drift-status-dot { background: var(--accent-violet); box-shadow: 0 0 6px rgba(139, 92, 246, 0.4); }
-.drift-status-conflict .drift-status-dot { background: var(--accent-rose); box-shadow: 0 0 6px rgba(244, 63, 94, 0.5); animation: pulse 1.5s infinite; }
+.drift-status-clean .drift-status-dot { background: var(--accent-output); }
+.drift-status-graph-ahead .drift-status-dot { background: var(--accent-input); }
+.drift-status-code-ahead .drift-status-dot { background: var(--accent-transform); }
+.drift-status-both-ahead .drift-status-dot { background: var(--accent-fetch); }
+.drift-status-conflict .drift-status-dot { background: var(--error); animation: pulse 1.5s infinite; }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
@@ -319,36 +408,45 @@ html, body, #root {
 }
 
 .drift-status-text {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--on-surface-variant);
+  letter-spacing: 0.05em;
 }
 
+/* ── Simulate Conflict button — secondary style ── */
 .simulate-btn {
   margin-left: auto;
+  font-family: var(--font-structural);
   font-size: 11px;
-  font-weight: 500;
-  padding: 3px 10px;
-  border-radius: 100px;
-  border: 1px solid var(--border-medium);
-  background: var(--bg-surface);
-  color: var(--text-secondary);
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--outline-variant);
+  background: transparent;
+  color: var(--on-surface);
   cursor: pointer;
-  transition: all 0.15s;
-  font-family: var(--font-sans);
+  transition: border-color 0.15s ease, color 0.15s ease;
+  letter-spacing: 0.05em;
 }
 
 .simulate-btn:hover {
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-  border-color: var(--accent-amber);
+  border-color: var(--outline);
+  color: var(--primary);
+}
+
+/* ── Drift banner container ── */
+.drift-banner-container {
+  flex-shrink: 0;
+  border-top: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
 }
 
 /* ── Conflict Panel ── */
 .drift-conflict-panel {
-  padding: 12px 20px;
-  background: rgba(244, 63, 94, 0.04);
-  border-top: 1px solid rgba(244, 63, 94, 0.15);
+  padding: var(--spacing-node-padding) var(--spacing-gutter);
+  background: var(--surface-container-low);
+  border-top: 1px solid var(--outline-variant);
   animation: slideUp 0.2s ease-out;
 }
 
@@ -361,39 +459,31 @@ html, body, #root {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-bottom: 10px;
+  font-family: var(--font-structural);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--on-surface-variant);
+  margin-bottom: 12px;
   line-height: 1.4;
 }
 
 .drift-conflict-header svg {
   flex-shrink: 0;
-  margin-top: 1px;
+  margin-top: 2px;
 }
 
 .drift-conflict-nodes {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-}
-
-.drift-conflict-node {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 12px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
+  gap: var(--spacing-container-gap);
 }
 
 .drift-conflict-node-container {
   display: flex;
   flex-direction: column;
-  padding: 8px 12px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  padding: var(--spacing-container-gap) var(--spacing-node-padding);
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
   border-radius: var(--radius-sm);
   margin-bottom: 4px;
 }
@@ -405,65 +495,60 @@ html, body, #root {
 }
 
 .conflict-node-id {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  font-family: var(--font-mono);
-  color: var(--text-primary);
+  font-family: var(--font-data);
+  color: var(--on-surface);
 }
 
 .conflict-actions {
   display: flex;
-  gap: 6px;
+  gap: 8px;
 }
 
+/* ── Conflict buttons: Primary style per DESIGN.MD ──
+   "Primary: solid primary fill, on-primary text, no border" */
 .conflict-btn {
-  font-size: 11px;
+  font-family: var(--font-structural);
+  font-size: 12px;
   font-weight: 600;
-  padding: 4px 12px;
+  padding: 6px 16px;
   border-radius: var(--radius-sm);
   border: none;
   cursor: pointer;
-  font-family: var(--font-sans);
-  transition: all 0.15s;
+  transition: opacity 0.15s ease;
+  letter-spacing: 0.02em;
 }
 
+.conflict-btn:hover {
+  opacity: 0.85;
+}
+
+/* Keep Graph — primary button */
 .conflict-btn-graph {
-  background: rgba(59, 130, 246, 0.15);
-  color: var(--accent-blue);
+  background: var(--primary);
+  color: var(--on-primary);
 }
 
-.conflict-btn-graph:hover {
-  background: rgba(59, 130, 246, 0.25);
-}
-
+/* Keep Code — secondary button: "transparent fill, 1px outline-variant border, on-surface text" */
 .conflict-btn-code {
-  background: rgba(245, 158, 11, 0.15);
-  color: var(--accent-amber);
+  background: transparent;
+  color: var(--on-surface);
+  border: 1px solid var(--outline-variant);
 }
 
 .conflict-btn-code:hover {
-  background: rgba(245, 158, 11, 0.25);
+  border-color: var(--outline);
 }
 
-/* ── Edges ── */
-.react-flow__edge-path {
-  stroke: var(--accent-indigo) !important;
-  stroke-width: 2px !important;
-}
-
-.react-flow__edge.selected .react-flow__edge-path {
-  stroke: #818cf8 !important;
-  stroke-width: 3px !important;
-}
-
-/* ── Diff View in Conflict Banner ── */
+/* ── Diff View ── */
 .diff-view-container {
   display: flex;
   flex-direction: column;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  margin-top: 8px;
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  margin-top: var(--spacing-container-gap);
   overflow: hidden;
   max-width: 100%;
 }
@@ -472,20 +557,21 @@ html, body, #root {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--bg-elevated);
+  background: var(--surface-container-high);
   padding: 6px 12px;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--outline-variant);
+  font-family: var(--font-data);
   font-size: 11px;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--on-surface-variant);
 }
 
 .diff-title-graph {
-  color: #ef4444;
+  color: var(--accent-input);
 }
 
 .diff-title-code {
-  color: #10b981;
+  color: var(--accent-output);
 }
 
 .diff-vs {
@@ -493,14 +579,16 @@ html, body, #root {
   opacity: 0.5;
 }
 
+/* code-sm typography: JetBrains Mono, 13px, 400, 1.5 line-height */
 .diff-lines {
-  font-family: var(--font-mono);
-  font-size: 11px;
+  font-family: var(--font-data);
+  font-size: 13px;
+  font-weight: 400;
   line-height: 1.5;
   padding: 8px;
   max-height: 250px;
   overflow-y: auto;
-  background: #09090e;
+  background: var(--surface-container-lowest);
   transition: max-height 0.25s ease-in-out;
 }
 
@@ -514,18 +602,21 @@ html, body, #root {
   display: block;
 }
 
+/* Unchanged lines: on-surface-variant, no background */
 .diff-unchanged {
-  color: var(--text-secondary);
+  color: var(--on-surface-variant);
 }
 
+/* Removed lines: low-opacity desaturated red background with - prefix */
 .diff-removed {
-  background: rgba(239, 68, 68, 0.12);
-  color: #f87171;
+  background: rgba(168, 101, 101, 0.12);
+  color: #c89090;
 }
 
+/* Added lines: low-opacity desaturated green background with + prefix */
 .diff-added {
-  background: rgba(16, 185, 129, 0.12);
-  color: #34d399;
+  background: rgba(107, 142, 109, 0.12);
+  color: #98c09a;
 }
 
 .diff-line-content {
@@ -542,31 +633,35 @@ html, body, #root {
   font-weight: bold;
 }
 
+/* Truncation toggle — Ghost button style per DESIGN.MD:
+   "no fill or border, text/icon color only" */
 .diff-expand-btn {
-  background: var(--bg-elevated);
+  background: transparent;
   border: none;
-  border-top: 1px solid var(--border-subtle);
-  color: var(--accent-indigo);
-  font-size: 11px;
-  font-weight: 600;
+  border-top: 1px solid var(--outline-variant);
+  color: var(--on-surface-variant);
+  font-family: var(--font-data);
+  font-size: 12px;
+  font-weight: 500;
   padding: 6px;
   cursor: pointer;
   width: 100%;
   text-align: center;
-  transition: background 0.15s;
+  transition: color 0.15s ease;
 }
 
 .diff-expand-btn:hover {
-  background: var(--bg-surface);
+  color: var(--on-surface);
 }
 
 .diff-no-difference {
   padding: 10px 12px;
   margin-top: 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px dashed var(--border-subtle);
-  border-radius: var(--radius-md);
-  font-size: 11px;
-  color: var(--text-secondary);
+  background: var(--surface-container);
+  border: 1px dashed var(--outline-variant);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-data);
+  font-size: 13px;
+  color: var(--on-surface-variant);
   text-align: center;
 }

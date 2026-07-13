@@ -147,7 +147,7 @@ export function useGraphLoom() {
             sourceHandle: e.source.portId,
             targetHandle: e.target.portId,
             animated: true,
-            style: { stroke: '#6366f1', strokeWidth: 2 },
+            style: { stroke: '#8e9192', strokeWidth: 1, strokeDasharray: '6 4' },
           }))); // keep edges in sync
           setDrift({ status: 'clean' });
         } else {
@@ -209,7 +209,7 @@ export function useGraphLoom() {
         {
           ...connection,
           animated: true,
-          style: { stroke: '#6366f1', strokeWidth: 2 },
+          style: { stroke: '#8e9192', strokeWidth: 1, strokeDasharray: '6 4' },
         },
         prev,
       );
@@ -262,7 +262,7 @@ export function useGraphLoom() {
     // External code edit: modify upperCase function body
     const externalCode = prevCode.replace(
       /return query\.toUpperCase\(\);/,
-      'return query.toUpperCase() + " [external]";',
+      'return query.toUpperCase() + " [external]";'
     );
 
     if (externalCode !== prevCode) {

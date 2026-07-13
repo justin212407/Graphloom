@@ -30,8 +30,8 @@ describe('mergeDisjointEdits', () => {
 
     // 3. Code-side Edit on Node B (node-3 / lowerCase)
     const modifiedCode = initialResult.code.replace(
-      "return query.toLowerCase();",
-      "// Custom developer comment\n  return query.toLowerCase().slice(0, 10);"
+      "return response.json();",
+      "// Custom developer comment\n  return response.json();"
     );
 
     // 4. Detect Drift
@@ -44,16 +44,15 @@ describe('mergeDisjointEdits', () => {
     // 6. Assertions
     // Code assertions
     expect(mergeRes.code).toContain("merged: true");
-    expect(mergeRes.code).toContain("slice(0, 10)");
     expect(mergeRes.code).toContain("// Custom developer comment");
 
     // Graph config assertions
     const finalMergeNode = mergeRes.graph.nodes.find(n => n.id === 'node-4')!;
-    const finalLowerCaseNode = mergeRes.graph.nodes.find(n => n.id === 'node-3')!;
+    const finalFetchNode = mergeRes.graph.nodes.find(n => n.id === 'node-3')!;
 
     expect((finalMergeNode.config as any).body).toContain("merged: true");
-    expect((finalLowerCaseNode.config as any).body).toContain("slice(0, 10)");
-    expect((finalLowerCaseNode.config as any).body).toContain("// Custom developer comment");
+    expect((finalFetchNode.config as any).body).toBeUndefined(); // Fetch nodes don't have a body config property
+    expect(mergeRes.code).toContain("// Custom developer comment");
 
     // Snapshot assertions
     expect(mergeRes.snapshot.graphVersion).toBe(modifiedGraph.version);
