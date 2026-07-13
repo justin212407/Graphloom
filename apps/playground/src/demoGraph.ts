@@ -1,5 +1,5 @@
 import type { Graph } from '@graphloom/core';
-import { createInputNode, createTransformNode, createOutputNode } from '@graphloom/core';
+import { createInputNode, createTransformNode, createOutputNode, createFetchNode } from '@graphloom/core';
 
 /**
  * Demo graph: AI pipeline shape (fan-out/fan-in)
@@ -26,12 +26,13 @@ export function createDemoGraph(): Graph {
     position: { x: 350, y: 80 },
   });
 
-  const lowerNode = createTransformNode({
+  const fetchNode = createFetchNode({
     id: 'node-3',
-    label: 'lowerCase',
+    label: 'fetchSuffix',
     inputs: [{ name: 'query', type: 'string' }],
     outputType: 'string',
-    body: 'return query.toLowerCase();',
+    urlTemplate: 'https://api.example.com/suffix?q=${query}',
+    method: 'GET',
     position: { x: 350, y: 320 },
   });
 
@@ -56,7 +57,7 @@ export function createDemoGraph(): Graph {
 
   return {
     id: 'demo-graph',
-    nodes: [inputNode, upperNode, lowerNode, mergeNode, outputNode],
+    nodes: [inputNode, upperNode, fetchNode, mergeNode, outputNode],
     edges: [
       { id: 'edge-1', source: { nodeId: 'node-1', portId: 'node-1_out' }, target: { nodeId: 'node-2', portId: 'node-2_in_0' } },
       { id: 'edge-2', source: { nodeId: 'node-1', portId: 'node-1_out' }, target: { nodeId: 'node-3', portId: 'node-3_in_0' } },

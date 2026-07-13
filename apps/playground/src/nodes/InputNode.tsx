@@ -12,7 +12,7 @@ export default function InputNode({ data }: NodeProps) {
   const defaultVal = config.defaultValue !== undefined ? String(config.defaultValue) : '—';
 
   return (
-    <div className="graphloom-node node-kind-input" style={{ borderRadius: 24 }}>
+    <div className="graphloom-node node-kind-input">
       <div className="node-header-bar" />
       <div className="node-header">
         <div className="node-icon">

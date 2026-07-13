@@ -40,21 +40,28 @@ export default function Canvas({
         nodeTypes={nodeTypes}
         fitView
         proOptions={{ hideAttribution: true }}
-        defaultEdgeOptions={{ animated: true, style: { stroke: '#6366f1', strokeWidth: 2 } }}
+        defaultEdgeOptions={{
+          animated: true,
+          style: {
+            stroke: 'var(--outline)',
+            strokeWidth: 1,
+            strokeDasharray: '6 4',
+          },
+        }}
       >
-        <Background color="#2a2a3a" gap={20} />
+        <Background color="#2a2a2a" gap={20} />
         <Controls />
         <MiniMap
           nodeColor={(n) => {
             switch (n.type) {
-              case 'input': return '#22c55e';
-              case 'fetch': return '#06b6d4';
-              case 'transform': return '#8b5cf6';
-              case 'output': return '#f43f5e';
-              default: return '#6b7280';
+              case 'input': return '#5C7C99';
+              case 'fetch': return '#7D6B91';
+              case 'transform': return '#B58B5C';
+              case 'output': return '#6B8E6D';
+              default: return '#8e9192';
             }
           }}
-          style={{ backgroundColor: '#1a1a24' }}
+          style={{ backgroundColor: '#0e0e0e' }}
         />
       </ReactFlow>
     </div>
